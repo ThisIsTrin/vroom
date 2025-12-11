@@ -21,9 +21,9 @@ while True:
 
     influx.write("imu", imu_data)
 
-
     tps_rang = ser.readline().decode('utf-8', errors='ignore').strip()
-    if tps_rang:
-        influx.write("tps", {"volt": int(tps_rang)})
+    clean_tps_rang = ''.join(c for c in line if c.isdigit())
+    if clean_tps_rang:
+        influx.write("tps", {"volt": int(clean_tps_rang)})
 
     time.sleep(SAMPLE_RATE)
