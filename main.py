@@ -24,6 +24,6 @@ while True:
 
     tps_rang = ser.readline().decode('utf-8', errors='ignore').strip()
     if tps_rang:
-        influx.write("tps", {"volt": tps_rang})
+        influx.write("tps", {"volt": int(tps_rang)})
 
     time.sleep(SAMPLE_RATE)
