@@ -1,7 +1,6 @@
 import time
 from sensors.imu import IMU
 from utils.influx import InfluxLogger
-from sensors.rpm import RPMReader
 
 import serial
 
