@@ -4,11 +4,14 @@ from utils.influx import InfluxLogger
 
 import serial
 
-ser = serial.Serial(
-    port="/dev/ttyACM0",    # or /dev/ttyAMA0 or /dev/ttyS0 depending on your wiring
-    baudrate=9600,
-    timeout=1
-)
+ser = None
+
+if os.path.exists("/dev/ttyACM0"):
+    ser = serial.Serial(
+        port="/dev/ttyACM0",    # or /dev/ttyAMA0 or /dev/ttyS0 depending on your wiring
+        baudrate=9600,
+        timeout=1
+    )
 
 
 imu = IMU()
@@ -22,8 +25,7 @@ while True:
     influx.write("imu", imu_data)
 
     tps_rang = ser.readline().decode('utf-8', errors='ignore').strip()
-    clean_tps_rang = ''.join(c for c in line if c.isdigit())
-    if clean_tps_rang:
-        influx.write("tps", {"volt": int(clean_tps_rang)})
+    if tps_rang:
+        influx.write("tps", {"volt": int(tps_rang)})
 
     time.sleep(SAMPLE_RATE)
