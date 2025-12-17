@@ -26,8 +26,12 @@ while True:
     influx.write("imu", imu_data)
 
     if ser:
-        tps_rang = ser.readline().decode('utf-8', errors='ignore').strip()
-        if tps_rang:
-            influx.write("tps", {"volt": int(tps_rang)})
+        raw = ser.readline().decode("utf-8", errors="ignore").strip()
+
+        try:
+            tps_val = int(raw)
+            influx.write("tps", {"volt": tps_val})
+        except ValueError:
+            print(f"Bad TPS data: {repr(raw)}")
 
     time.sleep(SAMPLE_RATE)
