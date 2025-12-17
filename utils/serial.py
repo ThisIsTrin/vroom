@@ -8,55 +8,59 @@ class SerialADC:
         self,
         port="/dev/ttyACM0",
         baudrate=9600,
-        timeout=0.1,
-        expected_fields=6
+        timeout=0.05,
+        expected_fields=5,
+        reconnect_interval=1.0
     ):
-        """
-        expected_fields:
-            time_ms + A0..A3 = 5 fields
-            Example: 1234,512,623,401,890
-        """
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self.expected_fields = expected_fields
+        self.reconnect_interval = reconnect_interval
+
         self.ser = None
+        self.last_attempt = 0
+        self.connected = False
 
-        self._connect()
+    def _try_connect(self):
+        now = time.monotonic()
+        if now - self.last_attempt < self.reconnect_interval:
+            return
 
-    def _connect(self):
-        if os.path.exists(self.port):
-            try:
-                self.ser = serial.Serial(
-                    port=self.port,
-                    baudrate=self.baudrate,
-                    timeout=self.timeout
-                )
-                print(f"[SerialADC] Connected to {self.port}")
-            except serial.SerialException as e:
-                print(f"[SerialADC] Failed to open serial: {e}")
-                self.ser = None
-        else:
-            print(f"[SerialADC] Port {self.port} not found")
+        self.last_attempt = now
+
+        if not os.path.exists(self.port):
+            if self.connected:
+                print("[SerialADC] Device disappeared")
+                self.connected = False
+            return
+
+        try:
+            self.ser = serial.Serial(
+                port=self.port,
+                baudrate=self.baudrate,
+                timeout=self.timeout
+            )
+            self.connected = True
+            print(f"[SerialADC] Connected to {self.port}")
+        except serial.SerialException:
+            self.connected = False
+            self.ser = None
 
     def read(self):
-        """
-        Returns:
-            dict or None
-
-        Example output:
-        {
-            "time_ms": 1234,
-            "A0": 512,
-            "A1": 623,
-            "A2": 401,
-            "A3": 890
-        }
-        """
+        # Attempt reconnect if needed
         if not self.ser or not self.ser.is_open:
+            self._try_connect()
             return None
 
-        line = self.ser.readline().decode("utf-8", errors="ignore").strip()
+        try:
+            line = self.ser.readline().decode("utf-8", errors="ignore").strip()
+        except serial.SerialException:
+            # USB unplugged or Arduino reset mid-read
+            print("[SerialADC] Serial read error, reconnecting…")
+            self._close()
+            return None
+
         if not line:
             return None
 
@@ -78,6 +82,14 @@ class SerialADC:
             "A3": values[4],
         }
 
-    def close(self):
+    def _close(self):
         if self.ser:
-            self.ser.close()
+            try:
+                self.ser.close()
+            except Exception:
+                pass
+        self.ser = None
+        self.connected = False
+
+    def close(self):
+        self._close()

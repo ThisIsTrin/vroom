@@ -1,10 +1,6 @@
-import os
 import time
 from sensors.imu import IMU
 from utils.influx import InfluxLogger
-
-import serial
-
 from utils.serial import SerialADC
 
 imu = IMU()
